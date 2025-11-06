@@ -1,0 +1,40 @@
+# Configuration file for Census Income Prediction Project
+
+# Data paths
+data:
+  train_path: "data/census_income_learn.csv"
+  test_path: "data/census_income_test.csv"
+  metadata_path: "data/census_income_metadata.txt"
+
+# Preprocessing
+preprocessing:
+  target_column: "income"
+  test_size: 0.2
+  random_state: 42
+  handle_missing: "mode"  # Options: "mode", "median", "drop", "impute"
+  encode_categorical: "onehot"  # Options: "onehot", "label", "target"
+  scale_numerical: true
+  scaler_type: "standard"  # Options: "standard", "minmax", "robust"
+
+# Feature engineering
+feature_engineering:
+  create_interactions: false
+  polynomial_features: false
+  feature_selection: true
+  selection_method: "mutual_info"  # Options: "mutual_info", "chi2", "f_classif"
+
+# Modeling
+modeling:
+  cv_folds: 5
+  scoring_metric: "roc_auc"  # Options: "roc_auc", "f1", "precision", "recall", "accuracy"
+  n_jobs: -1
+  random_state: 42
+
+# Output paths
+output:
+  models_dir: "models/"
+  results_dir: "results/"
+  figures_dir: "results/figures/"
+  reports_dir: "results/reports/"
+  predictions_dir: "results/predictions/"
+
