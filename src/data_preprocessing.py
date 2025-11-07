@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Dict
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -15,7 +15,9 @@ warnings.filterwarnings('ignore')
 def handle_missing_values(
     df: pd.DataFrame,
     strategy: str = "mode",
-    missing_indicators: List[str] = ["?", " ?", "? ", " ? "]
+    missing_indicators: List[str] = ["?", " ?", "? ", " ? "],
+    categorical_fill_value: str = "not identified",
+    numerical_fill_value: Optional[float] = None
 ) -> pd.DataFrame:
     """
     Handle missing values in the dataset.
@@ -28,6 +30,10 @@ def handle_missing_values(
         Strategy to handle missing values: "mode", "median", "drop", "impute"
     missing_indicators : List[str]
         List of strings that indicate missing values
+    categorical_fill_value : str
+        Value to use for filling missing categorical values (default: "not identified")
+    numerical_fill_value : float, optional
+        Value to use for filling missing numerical values. If None, uses median (default: None)
         
     Returns:
     --------
@@ -43,18 +49,24 @@ def handle_missing_values(
     if strategy == "drop":
         df = df.dropna()
     elif strategy == "mode":
-        # Fill categorical with mode, numerical with median
+        # Fill categorical with specified value, numerical with specified value or median
         for col in df.columns:
             if df[col].dtype == 'object':
-                df[col].fillna(df[col].mode()[0] if not df[col].mode().empty else "Unknown", inplace=True)
+                df[col].fillna(categorical_fill_value, inplace=True)
             else:
-                df[col].fillna(df[col].median(), inplace=True)
+                if numerical_fill_value is not None:
+                    df[col].fillna(numerical_fill_value, inplace=True)
+                else:
+                    df[col].fillna(df[col].median(), inplace=True)
     elif strategy == "median":
         for col in df.columns:
             if df[col].dtype in ['int64', 'float64']:
-                df[col].fillna(df[col].median(), inplace=True)
+                if numerical_fill_value is not None:
+                    df[col].fillna(numerical_fill_value, inplace=True)
+                else:
+                    df[col].fillna(df[col].median(), inplace=True)
             else:
-                df[col].fillna(df[col].mode()[0] if not df[col].mode().empty else "Unknown", inplace=True)
+                df[col].fillna(categorical_fill_value, inplace=True)
     
     return df
 
@@ -92,7 +104,7 @@ def encode_categorical(
         columns = df.select_dtypes(include=['object']).columns.tolist()
     
     if method == "onehot":
-        df = pd.get_dummies(df, columns=columns, prefix=columns, drop_first=True)
+        df = pd.get_dummies(df, columns=columns, drop_first=False)
         return df, None
     
     elif method == "label":
@@ -242,4 +254,286 @@ def prepare_data(
     )
     
     return X_train, X_test, y_train, y_test, preprocessors
+
+
+def remove_duplicates(
+    df: pd.DataFrame,
+    subset: Optional[List[str]] = None,
+    keep: str = 'first'
+) -> pd.DataFrame:
+    """
+    Remove duplicate rows from the dataset.
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Input dataframe
+    subset : List[str], optional
+        List of column names to consider for duplicate detection.
+        If None, considers all columns.
+    keep : str
+        Which duplicates to keep: 'first', 'last', or False (drop all)
+        
+    Returns:
+    --------
+    df : pd.DataFrame
+        Dataframe with duplicates removed
+    """
+    df = df.copy()
+    
+    if subset is None:
+        # Remove duplicates across all columns
+        df = df.drop_duplicates(keep=keep)
+    else:
+        # Remove duplicates based on subset of columns
+        df = df.drop_duplicates(subset=subset, keep=keep)
+    
+    return df
+
+
+def treat_outliers(
+    df: pd.DataFrame,
+    columns: Optional[List[str]] = None,
+    method: str = 'winsorize',
+    lower_percentile: float = 0.01,
+    upper_percentile: float = 0.99,
+    bounds: Optional[Dict[str, Tuple[float, float]]] = None
+) -> Tuple[pd.DataFrame, Optional[Dict[str, Tuple[float, float]]]]:
+    """
+    Treat outliers in numerical columns.
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Input dataframe
+    columns : List[str], optional
+        List of numerical columns to treat. If None, treats all numerical columns.
+    method : str
+        Method to treat outliers: 'winsorize', 'clip', 'remove'
+    lower_percentile : float
+        Lower percentile for winsorize/clip (default: 0.01)
+    upper_percentile : float
+        Upper percentile for winsorize/clip (default: 0.99)
+    bounds : Dict[str, Tuple[float, float]], optional
+        Pre-computed bounds dictionary {column_name: (lower_bound, upper_bound)}.
+        If provided, uses these bounds instead of calculating from data.
+        
+    Returns:
+    --------
+    df : pd.DataFrame
+        Dataframe with outliers treated
+    bounds : Dict[str, Tuple[float, float]]
+        Dictionary of bounds used for each column (for reuse on test data)
+    """
+    df = df.copy()
+    
+    if columns is None:
+        # Get all numerical columns
+        columns = df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    computed_bounds = {}
+    
+    for col in columns:
+        if col not in df.columns:
+            continue
+            
+        if method == 'winsorize' or method == 'clip':
+            # Use pre-computed bounds if provided, otherwise calculate from data
+            if bounds and col in bounds:
+                lower_bound, upper_bound = bounds[col]
+            else:
+                # Calculate percentiles from current data
+                lower_bound = df[col].quantile(lower_percentile)
+                upper_bound = df[col].quantile(upper_percentile)
+                computed_bounds[col] = (lower_bound, upper_bound)
+            
+            # Clip values to bounds
+            df[col] = df[col].clip(lower=lower_bound, upper=upper_bound)
+            
+        elif method == 'remove':
+            # Remove rows with outliers (using IQR method)
+            if bounds and col in bounds:
+                lower_bound, upper_bound = bounds[col]
+            else:
+                Q1 = df[col].quantile(0.25)
+                Q3 = df[col].quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                computed_bounds[col] = (lower_bound, upper_bound)
+            
+            # Remove outliers
+            df = df[(df[col] >= lower_bound) & (df[col] <= upper_bound)]
+    
+    # Return bounds if they were computed (for reuse on test data)
+    return_bounds = bounds if bounds else computed_bounds if computed_bounds else None
+    
+    return df, return_bounds
+
+
+def make_label_binary(
+    df: pd.DataFrame,
+    target_column: str,
+    positive_class: str = '50000+.'
+) -> pd.DataFrame:
+    """
+    Convert target label to binary (0, 1).
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Input dataframe
+    target_column : str
+        Name of target column
+    positive_class : str
+        Value that should be mapped to 1
+        
+    Returns:
+    --------
+    df : pd.DataFrame
+        Dataframe with binary target
+    """
+    df = df.copy()
+    
+    if target_column not in df.columns:
+        raise ValueError(f"Target column '{target_column}' not found in dataframe")
+    
+    # Convert to string and strip whitespace for robust comparison
+    df[target_column] = df[target_column].astype(str).str.strip()
+    positive_class = str(positive_class).strip()
+    
+    # Check what unique values exist in the target column
+    unique_values = df[target_column].unique()
+    
+    # Verify that positive_class exists in the data
+    if positive_class not in unique_values:
+        raise ValueError(
+            f"Positive class '{positive_class}' not found in target column. "
+            f"Available values: {unique_values.tolist()}"
+        )
+    
+    # Map to binary: positive_class -> 1, others -> 0
+    df[target_column] = (df[target_column] == positive_class).astype(int)
+    
+    return df
+
+
+def feature_engineering(
+    df: pd.DataFrame,
+    target_column: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Perform feature engineering on the dataset.
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Input dataframe
+    target_column : str, optional
+        Name of target column (to exclude from feature engineering)
+        
+    Returns:
+    --------
+    df : pd.DataFrame
+        Dataframe with engineered features
+    """
+    df = df.copy()
+    
+    # Exclude target from feature engineering
+    feature_cols = [col for col in df.columns if col != target_column]
+    
+    # 1. Create binary flags for financial features
+    if 'capital_gains' in df.columns:
+        df['has_capital_gains'] = (df['capital_gains'] > 0).astype(int)
+    
+    if 'capital_losses' in df.columns:
+        df['has_capital_losses'] = (df['capital_losses'] > 0).astype(int)
+    
+    if 'dividends_from_stocks' in df.columns:
+        df['has_dividends'] = (df['dividends_from_stocks'] > 0).astype(int)
+    
+    if 'wage_per_hour' in df.columns:
+        df['has_wage'] = (df['wage_per_hour'] > 0).astype(int)
+        # Handle special value 9999 (likely missing/unknown)
+        df['wage_per_hour'] = df['wage_per_hour'].replace(9999, np.nan)
+    
+    # 2. Create age groups
+    if 'age' in df.columns:
+        df['age_group'] = pd.cut(
+            df['age'],
+            bins=[0, 25, 35, 45, 55, 65, 100],
+            labels=['<25', '25-35', '35-45', '45-55', '55-65', '65+']
+        )
+    
+    # 3. Create total financial assets (if applicable)
+    financial_cols = ['capital_gains', 'capital_losses', 'dividends_from_stocks']
+    if all(col in df.columns for col in financial_cols):
+        df['total_financial_assets'] = (
+            df['capital_gains'] - df['capital_losses'] + df['dividends_from_stocks']
+        )
+    
+    # 4. Create work intensity feature
+    if 'weeks_worked_in_year' in df.columns and 'num_persons_worked_for_employer' in df.columns:
+        df['work_intensity'] = (
+            df['weeks_worked_in_year'] * df['num_persons_worked_for_employer']
+        )
+    
+    return df
+
+
+def split_train_val_test(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    target_column: str,
+    val_size: float = 0.2,
+    random_state: int = 42
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+    """
+    Split data into train, validation, and test sets.
+    
+    Parameters:
+    -----------
+    train_df : pd.DataFrame
+        Training dataframe (from learn CSV)
+    test_df : pd.DataFrame
+        Test dataframe (from test CSV)
+    target_column : str
+        Name of target column
+    val_size : float
+        Proportion of validation set from training data
+    random_state : int
+        Random seed
+        
+    Returns:
+    --------
+    X_train : pd.DataFrame
+        Training features
+    X_val : pd.DataFrame
+        Validation features
+    X_test : pd.DataFrame
+        Test features
+    y_train : pd.Series
+        Training target
+    y_val : pd.Series
+        Validation target
+    y_test : pd.Series
+        Test target
+    """
+    # Separate features and target
+    X_train_full = train_df.drop(columns=[target_column])
+    y_train_full = train_df[target_column]
+    
+    X_test = test_df.drop(columns=[target_column])
+    y_test = test_df[target_column]
+    
+    # Split training data into train and validation
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train_full,
+        y_train_full,
+        test_size=val_size,
+        random_state=random_state,
+        stratify=y_train_full
+    )
+    
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
