@@ -80,10 +80,11 @@ census_ml_example/
    ```
 
 4. **Run the analysis pipeline**
-   ```bash
-   python -m src.main
-   # Or using uv: uv run python -m src.main
-   ```
+   
+   The project uses Jupyter notebooks for the complete workflow:
+   - Start with: `notebooks/01_exploratory_data_analysis.ipynb`
+   - Then: `notebooks/02_data_preprocessing.ipynb`
+   - Finally: `notebooks/03_modeling.ipynb`
 
 ## Project Workflow
 
@@ -100,7 +101,7 @@ census_ml_example/
    - Train/test split
 
 3. **Modeling** (`notebooks/03_model_experimentation.ipynb`)
-   - Train multiple models (Logistic Regression, Random Forest, XGBoost, etc.)
+   - Train models (LightGBM, Random Forest)
    - Hyperparameter tuning
    - Model evaluation and comparison
    - Feature importance analysis

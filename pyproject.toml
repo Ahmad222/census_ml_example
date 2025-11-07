@@ -26,9 +26,8 @@ dependencies = [
     "scipy>=1.10.0",
     
     # Machine Learning
-    "xgboost>=2.0.0",
     "lightgbm>=4.0.0",
-    "catboost>=1.2.0",
+    "optuna>=3.0.0",
     
     # Visualization
     "matplotlib>=3.7.0",
@@ -61,8 +60,6 @@ dev = [
     "sphinx>=7.1.0",
 ]
 
-[project.scripts]
-census-pipeline = "src.main:main"
 
 [build-system]
 requires = ["hatchling"]

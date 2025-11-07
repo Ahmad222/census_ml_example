@@ -20,15 +20,23 @@ preprocessing:
 feature_engineering:
   create_interactions: false
   polynomial_features: false
-  feature_selection: true
-  selection_method: "mutual_info"  # Options: "mutual_info", "chi2", "f_classif"
+  # Feature selection (based on EDA importance)
+  feature_selection:
+    enabled: true
+    importance_path: "../results/reports/feature_importance.csv"  # Path to importance file from EDA
+    n_features: 30  # Number of top features to select
 
 # Modeling
 modeling:
+  model_type: "lightgbm"  # Options: "lightgbm", "random_forest"
   cv_folds: 5
   scoring_metric: "roc_auc"  # Options: "roc_auc", "f1", "precision", "recall", "accuracy"
   n_jobs: -1
   random_state: 42
+  # Hyperparameter tuning settings (for Optuna-based models like LightGBM)
+  hpt:
+    n_trials_random: 50
+    n_trials_tpe: 20
 
 # Output paths
 output:

@@ -38,8 +38,8 @@ ENV/
 *.swo
 *~
 
-# Data - ignore all contents in data folder
-data/
+# Data - now tracked in git
+# data/
 
 # Models
 models/*.pkl

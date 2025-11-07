@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from pathlib import Path
 
 # Set style
@@ -96,6 +96,8 @@ def plot_feature_distributions(
     df: pd.DataFrame,
     columns: Optional[List[str]] = None,
     n_cols: int = 3,
+    use_log_scale: Optional[Dict[str, bool]] = None,
+    exclude_from_log: Optional[List[str]] = None,
     save_path: Optional[str] = None
 ) -> None:
     """
@@ -109,11 +111,20 @@ def plot_feature_distributions(
         List of columns to plot. If None, plots all numerical columns.
     n_cols : int
         Number of columns in subplot grid
+    use_log_scale : Dict[str, bool], optional
+        Dictionary mapping column names to whether to use log scale.
+        If None, auto-detects based on data range (except for excluded columns).
+    exclude_from_log : List[str], optional
+        List of column names to exclude from log scale (e.g., ['age']).
+        Default is ['age'].
     save_path : str, optional
         Path to save the figure
     """
     if columns is None:
         columns = df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    if exclude_from_log is None:
+        exclude_from_log = ['age']
     
     n_features = len(columns)
     n_rows = (n_features + n_cols - 1) // n_cols
@@ -123,10 +134,45 @@ def plot_feature_distributions(
     
     for idx, col in enumerate(columns):
         if col in df.columns:
-            df[col].hist(bins=50, ax=axes[idx], edgecolor='black')
+            # Determine if log scale should be used
+            col_use_log = False
+            if use_log_scale is not None:
+                col_use_log = use_log_scale.get(col, False)
+            elif col not in exclude_from_log:
+                # Auto-detect: use log scale if range is large
+                numeric_data = pd.to_numeric(df[col], errors='coerce').dropna()
+                if len(numeric_data) > 0:
+                    min_val = numeric_data.min()
+                    max_val = numeric_data.max()
+                    if min_val > 0 and max_val > 0:
+                        range_ratio = max_val / min_val if min_val > 0 else float('inf')
+                        col_use_log = range_ratio > 100
+            
+            # Prepare data for plotting
+            plot_data = pd.to_numeric(df[col], errors='coerce').dropna()
+            
+            if col_use_log:
+                # Filter out zeros and negatives for log scale
+                plot_data = plot_data[plot_data > 0]
+                if len(plot_data) > 0:
+                    plot_data.hist(bins=50, ax=axes[idx], edgecolor='black')
+                    axes[idx].set_xscale('log')
+                    axes[idx].set_yscale('log')
+                    axes[idx].set_xlabel(f'{col} (log scale)')
+                    axes[idx].set_ylabel('Frequency (log scale)')
+                else:
+                    # If no positive values, use regular scale
+                    plot_data = pd.to_numeric(df[col], errors='coerce').dropna()
+                    plot_data.hist(bins=50, ax=axes[idx], edgecolor='black')
+                    axes[idx].set_xlabel(col)
+                    axes[idx].set_ylabel('Frequency')
+            else:
+                plot_data.hist(bins=50, ax=axes[idx], edgecolor='black')
+                axes[idx].set_xlabel(col)
+                axes[idx].set_ylabel('Frequency')
+            
             axes[idx].set_title(f'Distribution of {col}')
-            axes[idx].set_xlabel(col)
-            axes[idx].set_ylabel('Frequency')
+            axes[idx].grid(alpha=0.3)
     
     # Hide extra subplots
     for idx in range(n_features, len(axes)):

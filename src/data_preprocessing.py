@@ -75,37 +75,92 @@ def encode_categorical(
     df: pd.DataFrame,
     method: str = "onehot",
     columns: Optional[List[str]] = None,
-    label_encoders: Optional[dict] = None
-) -> Tuple[pd.DataFrame, Optional[dict]]:
+    label_encoders: Optional[dict] = None,
+    frequency_encoders: Optional[dict] = None,
+    max_categories_for_onehot: int = 5
+) -> Tuple[pd.DataFrame, Optional[dict], Optional[dict]]:
     """
     Encode categorical variables.
+    
+    Uses one-hot encoding for categories with <= max_categories_for_onehot unique values,
+    and frequency encoding for categories with more unique values.
     
     Parameters:
     -----------
     df : pd.DataFrame
         Input dataframe
     method : str
-        Encoding method: "onehot", "label", "target"
+        Encoding method: "onehot", "label", "target", "hybrid" (default: hybrid for method="onehot")
+        - "hybrid": one-hot for <= max_categories_for_onehot, frequency for others
+        - "onehot": one-hot encoding for all (legacy behavior)
+        - "label": label encoding for all
     columns : List[str], optional
         List of columns to encode. If None, encodes all object columns
     label_encoders : dict, optional
-        Dictionary of label encoders for consistent encoding
+        Dictionary of label encoders for consistent encoding (used with method="label")
+    frequency_encoders : dict, optional
+        Dictionary of frequency mappings for consistent encoding (used with method="hybrid")
+    max_categories_for_onehot : int
+        Maximum number of unique categories to use one-hot encoding (default: 5)
         
     Returns:
     --------
     df : pd.DataFrame
         Encoded dataframe
     label_encoders : dict, optional
-        Dictionary of label encoders used
+        Dictionary of label encoders used (if method="label")
+    frequency_encoders : dict, optional
+        Dictionary of frequency mappings used (if method="hybrid" or "onehot")
     """
     df = df.copy()
     
     if columns is None:
         columns = df.select_dtypes(include=['object']).columns.tolist()
     
-    if method == "onehot":
-        df = pd.get_dummies(df, columns=columns, drop_first=False)
-        return df, None
+    if method == "onehot" or method == "hybrid":
+        # Use hybrid approach: one-hot for low cardinality, frequency for high cardinality
+        if frequency_encoders is None:
+            frequency_encoders = {}
+        
+        # Identify columns for one-hot vs frequency encoding
+        onehot_columns = []
+        frequency_columns = []
+        
+        for col in columns:
+            if col in df.columns:
+                n_unique = df[col].nunique()
+                if n_unique <= max_categories_for_onehot:
+                    onehot_columns.append(col)
+                else:
+                    frequency_columns.append(col)
+        
+        # Apply one-hot encoding to low cardinality columns
+        if onehot_columns:
+            df = pd.get_dummies(df, columns=onehot_columns, drop_first=False)
+        
+        # Apply frequency encoding to high cardinality columns
+        for col in frequency_columns:
+            if col in df.columns:
+                if col not in frequency_encoders:
+                    # Calculate frequency mapping from training data
+                    freq_map = df[col].value_counts().to_dict()
+                    frequency_encoders[col] = freq_map
+                else:
+                    # Use existing frequency mapping (for test/validation sets)
+                    freq_map = frequency_encoders[col]
+                
+                # Replace categories with their frequencies
+                # For unseen categories, use 0 or the minimum frequency
+                df[col] = df[col].map(freq_map)
+                if df[col].isna().any():
+                    # Handle unseen categories: use minimum frequency or 0
+                    min_freq = min(freq_map.values()) if freq_map else 0
+                    df[col] = df[col].fillna(min_freq)
+                
+                # Convert to numeric
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        
+        return df, None, frequency_encoders
     
     elif method == "label":
         if label_encoders is None:
@@ -125,7 +180,7 @@ def encode_categorical(
                     )
                     df[col] = label_encoders[col].transform(df[col])
         
-        return df, label_encoders
+        return df, label_encoders, None
     
     else:
         raise ValueError(f"Unknown encoding method: {method}")
@@ -238,10 +293,10 @@ def prepare_data(
     X = handle_missing_values(X, strategy=handle_missing_strategy)
     
     # Encode categorical variables
-    X, label_encoders = encode_categorical(X, method=encode_method)
+    X, label_encoders, frequency_encoders = encode_categorical(X, method=encode_method)
     
     # Scale numerical features
-    preprocessors = {"label_encoders": label_encoders}
+    preprocessors = {"label_encoders": label_encoders, "frequency_encoders": frequency_encoders}
     if scale_numerical_features:
         X, scaler = scale_numerical(X, scaler_type=scaler_type)
         preprocessors["scaler"] = scaler
@@ -457,22 +512,14 @@ def feature_engineering(
         # Handle special value 9999 (likely missing/unknown)
         df['wage_per_hour'] = df['wage_per_hour'].replace(9999, np.nan)
     
-    # 2. Create age groups
-    if 'age' in df.columns:
-        df['age_group'] = pd.cut(
-            df['age'],
-            bins=[0, 25, 35, 45, 55, 65, 100],
-            labels=['<25', '25-35', '35-45', '45-55', '55-65', '65+']
-        )
-    
-    # 3. Create total financial assets (if applicable)
+    # 2. Create total financial assets (if applicable)
     financial_cols = ['capital_gains', 'capital_losses', 'dividends_from_stocks']
     if all(col in df.columns for col in financial_cols):
         df['total_financial_assets'] = (
             df['capital_gains'] - df['capital_losses'] + df['dividends_from_stocks']
         )
     
-    # 4. Create work intensity feature
+    # 3. Create work intensity feature
     if 'weeks_worked_in_year' in df.columns and 'num_persons_worked_for_employer' in df.columns:
         df['work_intensity'] = (
             df['weeks_worked_in_year'] * df['num_persons_worked_for_employer']
@@ -536,4 +583,88 @@ def split_train_val_test(
     )
     
     return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def select_features_by_importance(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    importance_path: str,
+    n_features: int = 30,
+    target_column: Optional[str] = None,
+    engineered_features: Optional[List[str]] = None
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Select top features based on feature importance from EDA, plus all engineered features.
+    
+    Parameters:
+    -----------
+    train_df : pd.DataFrame
+        Training dataframe
+    test_df : pd.DataFrame
+        Test dataframe
+    importance_path : str
+        Path to CSV file with feature importance (from EDA)
+    n_features : int
+        Number of top features to select from importance file
+    target_column : str, optional
+        Name of target column (will always be included)
+    engineered_features : List[str], optional
+        List of engineered feature names to always include. If None, uses default list:
+        ['has_capital_gains', 'has_capital_losses', 'has_dividends', 'has_wage',
+         'total_financial_assets', 'work_intensity']
+        
+    Returns:
+    --------
+    train_df_selected : pd.DataFrame
+        Training dataframe with selected features
+    test_df_selected : pd.DataFrame
+        Test dataframe with selected features
+    """
+    import pandas as pd
+    from pathlib import Path
+    
+    # Default engineered features (created during feature engineering step)
+    if engineered_features is None:
+        engineered_features = [
+            'has_capital_gains',
+            'has_capital_losses',
+            'has_dividends',
+            'has_wage',
+            'total_financial_assets',
+            'work_intensity'
+        ]
+    
+    # Load feature importance
+    importance_df = pd.read_csv(importance_path)
+    
+    # Get top N features from importance file
+    top_features = importance_df.head(n_features)['feature'].tolist()
+    
+    # Always include engineered features (if they exist in the dataframe)
+    available_engineered = [f for f in engineered_features if f in train_df.columns]
+    
+    # Always include target column if specified
+    if target_column and target_column in train_df.columns:
+        if target_column not in top_features:
+            top_features.append(target_column)
+    
+    # Combine: top features from importance + engineered features
+    selected_features = list(set(top_features + available_engineered))
+    
+    # Select features (only those that exist in the dataframe)
+    available_features = [f for f in selected_features if f in train_df.columns]
+    
+    print(f"\nFeature Selection based on EDA importance:")
+    print(f"  Total features in importance file: {len(importance_df)}")
+    print(f"  Requested top features from importance: {n_features}")
+    print(f"  Engineered features found: {len(available_engineered)}")
+    if available_engineered:
+        print(f"    {', '.join(available_engineered)}")
+    print(f"  Total selected features: {len(available_features)} (including {len(available_engineered)} engineered)")
+    
+    # Select features from both train and test
+    train_df_selected = train_df[available_features].copy()
+    test_df_selected = test_df[available_features].copy()
+    
+    return train_df_selected, test_df_selected
 
