@@ -18,15 +18,14 @@ census_ml_example/
 │   ├── __init__.py
 │   ├── data_loading.py           # Data loading utilities
 │   ├── data_preprocessing.py     # Data cleaning and preprocessing
-│   ├── feature_engineering.py    # Feature engineering
+│   ├── data_exploration.py       # EDA utilities and visualizations
 │   ├── modeling.py               # Model training and evaluation
-│   ├── visualization.py          # Visualization utilities
-│   └── utils.py                  # Helper functions
+│   └── visualization.py          # Visualization utilities
 │
-├── notebooks/                     # Jupyter notebooks for EDA
-│   ├── 01_exploratory_data_analysis.ipynb
-│   ├── 02_data_preprocessing.ipynb
-│   └── 03_model_experimentation.ipynb
+├── notebooks/                     # Jupyter notebooks (run in order)
+│   ├── 01_exploratory_data_analysis.ipynb    # EDA and feature importance
+│   ├── 02_data_preprocessing.ipynb           # Data cleaning and preprocessing
+│   └── 03_modeling.ipynb                     # Model training and evaluation
 │
 ├── config/                        # Configuration files
 │   ├── config.yaml               # Main configuration
@@ -81,35 +80,69 @@ census_ml_example/
 
 4. **Run the analysis pipeline**
    
-   The project uses Jupyter notebooks for the complete workflow:
-   - Start with: `notebooks/01_exploratory_data_analysis.ipynb`
-   - Then: `notebooks/02_data_preprocessing.ipynb`
-   - Finally: `notebooks/03_modeling.ipynb`
+   The project uses Jupyter notebooks for the complete workflow. Execute them in order:
+   
+   ```bash
+   # Start Jupyter (if not already running)
+   jupyter notebook
+   # Or: jupyter lab
+   ```
+   
+   Then run the notebooks in sequence:
+   1. **Exploratory Data Analysis:** `notebooks/01_exploratory_data_analysis.ipynb`
+      - Analyzes data quality, distributions, correlations, and feature importance
+      - Generates EDA figures and saves feature importance for preprocessing
+   
+   2. **Data Preprocessing:** `notebooks/02_data_preprocessing.ipynb`
+      - Removes duplicates, handles missing values, treats outliers
+      - Performs feature engineering and feature selection
+      - Encodes categoricals and saves processed data
+   
+   3. **Modeling:** `notebooks/03_modeling.ipynb`
+      - Trains models (LightGBM or Random Forest)
+      - Performs hyperparameter tuning
+      - Evaluates and visualizes model performance
 
 ## Project Workflow
 
-1. **Exploratory Data Analysis** (`notebooks/01_exploratory_data_analysis.ipynb`)
-   - Data overview and statistics
-   - Missing value analysis
-   - Target variable distribution
-   - Feature distributions and relationships
+The project follows a sequential notebook-based workflow:
 
-2. **Data Preprocessing** (`notebooks/02_data_preprocessing.ipynb`)
-   - Handle missing values
-   - Encode categorical variables
-   - Scale numerical features
-   - Train/test split
+### 1. Exploratory Data Analysis (`notebooks/01_exploratory_data_analysis.ipynb`)
+- Data overview and statistics
+- Missing value analysis
+- Target variable distribution (class imbalance analysis)
+- Feature distributions (numerical and categorical)
+- Correlation analysis
+- Feature importance calculation (for feature selection)
+- Outlier detection
+- **Output:** EDA figures and feature importance CSV file
 
-3. **Modeling** (`notebooks/03_model_experimentation.ipynb`)
-   - Train models (LightGBM, Random Forest)
-   - Hyperparameter tuning
-   - Model evaluation and comparison
-   - Feature importance analysis
+### 2. Data Preprocessing (`notebooks/02_data_preprocessing.ipynb`)
+- Remove duplicate rows
+- Handle missing values (categorical: "not identified", numerical: median)
+- Treat outliers (winsorization with train-derived bounds)
+- Convert target to binary (0/1)
+- Feature engineering (binary flags, aggregations, interactions)
+- Feature selection (based on EDA importance + engineered features)
+- Encode categoricals (hybrid: one-hot for ≤5 categories, frequency for >5)
+- **Output:** Processed data files (raw and encoded versions)
 
-4. **Final Model Selection**
-   - Select best model based on performance metrics
-   - Generate predictions on test set
-   - Create evaluation report
+### 3. Modeling (`notebooks/03_modeling.ipynb`)
+- Model selection (LightGBM or Random Forest, configured in `config/config.yaml`)
+- Load preprocessed data
+- Hyperparameter tuning:
+  - LightGBM: Optuna (random search + TPE)
+  - Random Forest: GridSearchCV
+- Train best model with optimized hyperparameters
+- Evaluate on train, validation, and test sets
+- Visualize performance (metrics, ROC curves, PR curves, confusion matrix)
+- Save model and hyperparameters
+- **Output:** Trained model, performance metrics, and visualization figures
+
+### 4. Reports
+- **EDA Report:** `results/reports/eda_report.md`
+- **Preprocessing Report:** `results/reports/preprocessing_report.md`
+- **Modeling Report:** `results/reports/modeling_report.md`
 
 ## Key Findings
 
