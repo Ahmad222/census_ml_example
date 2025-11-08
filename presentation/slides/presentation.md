@@ -18,6 +18,9 @@
 
 ![Target Distribution](../../results/figures/target_distribution.png)
 
+
+
+
 ---
 
 ## Dataset Overview
@@ -59,6 +62,11 @@
 - Marital status
 
 ![Education vs Target](../../results/figures/education_vs_target.png)
+
+
+
+![Target Distribution](../../results/figures/age_vs_target.png)
+
 
 ---
 
@@ -105,8 +113,8 @@
 ## Approach: Modeling
 
 ### Models
-- **LightGBM** - Optuna tuning, native categorical support
-- **Random Forest** - Optuna tuning, processed features
+- **LightGBM** 
+- **Random Forest**
 
 ### Hyperparameter Tuning
 - **70 trials** (50 random + 20 TPE)
@@ -133,19 +141,6 @@
 
 ---
 
-## Results: LightGBM Performance
-
-### Performance Dashboard
-
-![LightGBM Performance](../../results/figures/lgbm_model_performance.png)
-
-**Comprehensive evaluation:**
-- Metrics comparison (Precision, Recall, F1, ROC-AUC)
-- ROC & PR curves
-- Confusion matrix
-
----
-
 ## Results: LightGBM Optimization
 
 ### Optuna Tuning History
@@ -153,6 +148,26 @@
 **70 trials** → Best hyperparameters selected
 
 ![LightGBM Optuna](../../results/figures/lgbm_optuna.png)
+
+
+---
+
+## Results: LightGBM Performance
+
+### Performance Dashboard
+
+![LightGBM Performance](../../results/figures/lgbm_model_performance.png)
+
+
+---
+
+## Results: Random Forest Optimization
+
+### Optuna Tuning History
+
+**70 trials** → Best hyperparameters selected
+
+![Random Forest Optuna](../../results/figures/rf_optuna.png)
 
 ---
 
@@ -169,15 +184,6 @@
 
 ---
 
-## Results: Random Forest Optimization
-
-### Optuna Tuning History
-
-**70 trials** → Best hyperparameters selected
-
-![Random Forest Optuna](../../results/figures/rf_optuna.png)
-
----
 
 ## Model Comparison: LightGBM vs Random Forest
 
@@ -187,7 +193,7 @@
 - ✅ Native categorical feature handling
 - ✅ Faster training & inference
 - ✅ Gradient boosting (sequential learning)
-- ✅ Better for large datasets
+- ✅ Efficient memory usage
 
 **Random Forest:**
 - ✅ Ensemble of independent trees
@@ -197,30 +203,16 @@
 
 ---
 
-## Model Comparison: Performance
-
-### Strengths
-
-**LightGBM:**
-- Higher ROC-AUC typically
-- Better handling of class imbalance
-- Efficient memory usage
-
-**Random Forest:**
-- More stable predictions
-- Better generalization
-- Feature importance insights
-
 ### Trade-offs
 - **Speed:** LightGBM faster
 - **Interpretability:** Random Forest more interpretable
-- **Performance:** Both achieve strong results
+- **Performance:** Both achieve strong results, LGBM showed better generalization power in our example.
 
 ---
 
 ## Results: Key Insights
 
-✅ **Good generalization** (small train-val gap)  
+✅ **Good generalization** (small train-val gap, especially in LGBM)  
 ✅ **Strong discrimination** (high ROC-AUC)  
 ✅ **Effective imbalance handling**
 
@@ -263,29 +255,15 @@
 ## Summary
 
 ### What We Built
-✅ **Comprehensive EDA** - Feature importance analysis  
-✅ **Robust Preprocessing** - Production-ready pipeline  
-✅ **Optimized Models** - Hyperparameter tuning  
-✅ **Thorough Evaluation** - Multiple metrics & visualizations
+✅ **Comprehensive EDA**
+✅ **Robust Preprocessing** 
+✅ **Optimized Models** 
+✅ **Thorough Evaluation**
 
 ### Key Achievements
 - Handled **severe class imbalance** (6.21%)
 - Identified **strong predictors**
 - Built **reproducible pipeline**
 - Achieved **good model performance**
-
-### Impact
-🚀 Ready for deployment  
-📈 Clear improvement path  
-📚 Well-documented
-
----
-
-## Thank You
-
-**Questions?**
-
-**Project Repository:** [GitHub Link]  
-**Reports:** `results/reports/`  
 **Notebooks:** `notebooks/`
 
