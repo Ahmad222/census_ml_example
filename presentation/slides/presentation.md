@@ -105,12 +105,12 @@
 ## Approach: Modeling
 
 ### Models
-- **LightGBM** (primary) - Optuna tuning
-- **Random Forest** (alternative) - GridSearchCV
+- **LightGBM** - Optuna tuning, native categorical support
+- **Random Forest** - Optuna tuning, processed features
 
 ### Hyperparameter Tuning
 - **70 trials** (50 random + 20 TPE)
-- Bayesian optimization
+- Bayesian optimization (Optuna)
 - Optimize for **ROC-AUC**
 
 ### Class Imbalance
@@ -133,26 +133,88 @@
 
 ---
 
-## Results: Model Performance
+## Results: LightGBM Performance
 
 ### Performance Dashboard
 
-![Model Performance](../../results/figures/model_performance.png)
+![LightGBM Performance](../../results/figures/lgbm_model_performance.png)
 
-**Metrics:**
-- ROC-AUC (primary)
-- Precision-Recall curves
+**Comprehensive evaluation:**
+- Metrics comparison (Precision, Recall, F1, ROC-AUC)
+- ROC & PR curves
 - Confusion matrix
 
 ---
 
-## Results: Hyperparameter Optimization
+## Results: LightGBM Optimization
 
-### Optuna Tuning Progress
+### Optuna Tuning History
 
 **70 trials** → Best hyperparameters selected
 
-![Optuna Optimization](../../results/figures/optuna_optimization_history.png)
+![LightGBM Optuna](../../results/figures/lgbm_optuna.png)
+
+---
+
+## Results: Random Forest Performance
+
+### Performance Dashboard
+
+![Random Forest Performance](../../results/figures/rf_model_performance.png)
+
+**Comprehensive evaluation:**
+- Metrics comparison (Precision, Recall, F1, ROC-AUC)
+- ROC & PR curves
+- Confusion matrix
+
+---
+
+## Results: Random Forest Optimization
+
+### Optuna Tuning History
+
+**70 trials** → Best hyperparameters selected
+
+![Random Forest Optuna](../../results/figures/rf_optuna.png)
+
+---
+
+## Model Comparison: LightGBM vs Random Forest
+
+### Key Differences
+
+**LightGBM:**
+- ✅ Native categorical feature handling
+- ✅ Faster training & inference
+- ✅ Gradient boosting (sequential learning)
+- ✅ Better for large datasets
+
+**Random Forest:**
+- ✅ Ensemble of independent trees
+- ✅ More interpretable
+- ✅ Less prone to overfitting
+- ✅ Robust to outliers
+
+---
+
+## Model Comparison: Performance
+
+### Strengths
+
+**LightGBM:**
+- Higher ROC-AUC typically
+- Better handling of class imbalance
+- Efficient memory usage
+
+**Random Forest:**
+- More stable predictions
+- Better generalization
+- Feature importance insights
+
+### Trade-offs
+- **Speed:** LightGBM faster
+- **Interpretability:** Random Forest more interpretable
+- **Performance:** Both achieve strong results
 
 ---
 

@@ -535,6 +535,185 @@ def train_lightgbm_with_params(
     return model
 
 
+def create_optuna_objective_rf(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_val: pd.DataFrame,
+    y_val: pd.Series,
+    param_config: Dict
+):
+    """
+    Create Optuna objective function for Random Forest hyperparameter tuning.
+    
+    Parameters:
+    -----------
+    X_train : pd.DataFrame
+        Training features
+    y_train : pd.Series
+        Training target
+    X_val : pd.DataFrame
+        Validation features
+    y_val : pd.Series
+        Validation target
+    param_config : dict
+        Hyperparameter configuration from config file
+        
+    Returns:
+    --------
+    objective : callable
+        Optuna objective function
+    """
+    def objective(trial):
+        # Suggest hyperparameters based on config
+        params = {}
+        for param_name, param_spec in param_config.items():
+            if param_spec['type'] == 'int':
+                params[param_name] = trial.suggest_int(
+                    param_name,
+                    param_spec['low'],
+                    param_spec['high']
+                )
+            elif param_spec['type'] == 'categorical':
+                params[param_name] = trial.suggest_categorical(
+                    param_name,
+                    param_spec['choices']
+                )
+        
+        # Create Random Forest model with suggested parameters
+        model = RandomForestClassifier(
+            n_estimators=params['n_estimators'],
+            max_depth=params['max_depth'],
+            min_samples_split=params['min_samples_split'],
+            min_samples_leaf=params['min_samples_leaf'],
+            max_features=params['max_features'],
+            class_weight='balanced',  # Handle class imbalance
+            n_jobs=-1,
+            random_state=42
+        )
+        
+        # Train model
+        model.fit(X_train, y_train)
+        
+        # Predict on validation set
+        y_pred_proba = model.predict_proba(X_val)[:, 1]
+        
+        # Calculate AUC
+        auc = roc_auc_score(y_val, y_pred_proba)
+        
+        return auc
+    
+    return objective
+
+
+def optimize_random_forest_hyperparameters(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_val: pd.DataFrame,
+    y_val: pd.Series,
+    config_path: str = "config/model_config.yaml",
+    n_trials_random: int = 20,
+    n_trials_tpe: int = 50,
+    random_state: int = 42
+) -> Tuple[optuna.Study, Dict]:
+    """
+    Optimize Random Forest hyperparameters using Optuna.
+    
+    Parameters:
+    -----------
+    X_train : pd.DataFrame
+        Training features
+    y_train : pd.Series
+        Training target
+    X_val : pd.DataFrame
+        Validation features
+    y_val : pd.Series
+        Validation target
+    config_path : str
+        Path to model config YAML file
+    n_trials_random : int
+        Number of random search trials
+    n_trials_tpe : int
+        Number of TPE optimization trials
+    random_state : int
+        Random seed
+        
+    Returns:
+    --------
+    study : optuna.Study
+        Optuna study object
+    best_params : dict
+        Best hyperparameters found
+    """
+    # Load hyperparameter configuration
+    config = load_hyperparameter_config(config_path)
+    param_config = config['models']['random_forest']['params']
+    
+    # Create objective function
+    objective = create_optuna_objective_rf(
+        X_train, y_train, X_val, y_val, param_config
+    )
+    
+    # Create study
+    study = optuna.create_study(
+        direction='maximize',
+        study_name='random_forest_optimization',
+        sampler=optuna.samplers.RandomSampler(seed=random_state)
+    )
+    
+    # Run random search trials
+    print(f"Running {n_trials_random} random search trials...")
+    study.optimize(objective, n_trials=n_trials_random, show_progress_bar=True)
+    
+    # Switch to TPE sampler for remaining trials
+    study.sampler = optuna.samplers.TPESampler(seed=random_state)
+    print(f"Running {n_trials_tpe} TPE optimization trials...")
+    study.optimize(objective, n_trials=n_trials_tpe, show_progress_bar=True)
+    
+    best_params = study.best_params.copy()
+    
+    return study, best_params
+
+
+def train_random_forest_with_params(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    params: Dict
+) -> RandomForestClassifier:
+    """
+    Train Random Forest model with given hyperparameters.
+    
+    Parameters:
+    -----------
+    X_train : pd.DataFrame
+        Training features
+    y_train : pd.Series
+        Training target
+    params : dict
+        Hyperparameters for Random Forest
+        
+    Returns:
+    --------
+    model : RandomForestClassifier
+        Trained Random Forest model
+    """
+    # Create model with given parameters
+    model = RandomForestClassifier(
+        n_estimators=params.get('n_estimators', 100),
+        max_depth=params.get('max_depth', None),
+        min_samples_split=params.get('min_samples_split', 2),
+        min_samples_leaf=params.get('min_samples_leaf', 1),
+        max_features=params.get('max_features', 'sqrt'),
+        class_weight='balanced',  # Handle class imbalance
+        n_jobs=-1,
+        random_state=42
+    )
+    
+    # Train model
+    model.fit(X_train, y_train)
+    
+    return model
+
+
 def evaluate_model_performance(
     model: Any,
     X: pd.DataFrame,

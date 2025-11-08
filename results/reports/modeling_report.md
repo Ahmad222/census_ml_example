@@ -13,7 +13,7 @@ This report documents the machine learning modeling process for predicting wheth
 
 **Key Highlights:**
 - Model selection via configuration (`config/config.yaml`)
-- Hyperparameter tuning using Optuna (LightGBM) and GridSearchCV (Random Forest)
+- Hyperparameter tuning using Optuna for both LightGBM and Random Forest
 - Class imbalance handling with class weights
 - Comprehensive evaluation across train, validation, and test sets
 - Performance visualization with multiple metrics
@@ -88,22 +88,27 @@ This report documents the machine learning modeling process for predicting wheth
 
 ![Optuna Optimization History](../figures/optuna_optimization_history.png)
 
-### 3.2 Random Forest (GridSearchCV)
+### 3.2 Random Forest (Optuna)
 
 **Optimization Strategy:**
-- **GridSearchCV:** Exhaustive search over parameter grid
-- **Cross-Validation:** 5-fold stratified CV
-- **Optimization Metric:** ROC-AUC
+- **Random Search:** Initial exploration (default: 50 trials)
+- **TPE (Tree-structured Parzen Estimator):** Refined optimization (default: 20 trials)
+- **Total Trials:** 70 trials
+- **Optimization Metric:** ROC-AUC (handles class imbalance)
 
-**Hyperparameter Grid:**
-- `n_estimators`: [100, 200, 300]
-- `max_depth`: [10, 20, None]
-- `min_samples_split`: [2, 5, 10]
-- `min_samples_leaf`: [1, 2, 4]
+**Hyperparameter Ranges:**
+- `n_estimators`: 100-1000
+- `max_depth`: 3-30
+- `min_samples_split`: 2-20
+- `min_samples_leaf`: 1-10
 - `max_features`: ["sqrt", "log2"]
 
 **Class Imbalance Handling:**
 - `class_weight='balanced'` to automatically adjust for class imbalance
+
+**Visualization:**
+- Optimization history plot showing trial performance over time
+- Saved to: `results/figures/optuna_optimization_history_random_forest.png`
 
 ---
 
