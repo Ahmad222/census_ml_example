@@ -221,34 +221,6 @@
 - Financial features (when non-zero)
 - Weeks worked, Age
 
----
-
-## Next Steps
-
-### High Priority
-
-1. **Ensemble Methods**  
-   Combine LightGBM + Random Forest
-
-2. **Feature Engineering**  
-   Interaction features (age × education)
-
-3. **Threshold Optimization**  
-   Cost-sensitive learning
-
-4. **Model Interpretability**  
-   SHAP values, feature explanations
-
----
-
-## Next Steps
-
-### Medium Priority
-
-5. **SMOTE** - Synthetic oversampling  
-6. **Additional Models** - CatBoost, XGBoost  
-7. **Advanced Feature Selection** - RFE, SelectFromModel  
-8. **Nested CV** - More robust tuning
 
 ---
 
@@ -265,5 +237,32 @@
 - Identified **strong predictors**
 - Built **reproducible pipeline**
 - Achieved **good model performance**
-**Notebooks:** `notebooks/`
+
+---
+
+## Next Steps
+
+### High Priority
+
+1. **Ensemble Methods**  
+   Combine LightGBM + Random Forest
+
+2. **Feature Engineering**  
+   Interaction features (age × education)
+
+3. **Model Interpretability**  
+   SHAP values, feature explanations
+
+---
+
+## Next Steps
+
+### Medium Priority
+
+4. **SMOTE** - Synthetic oversampling  
+5. **Additional Models** - CatBoost, XGBoost  
+6. **Advanced Feature Selection** - SelectFromModel  
+7. **Nested CV** - More robust tuning
+
+
 
