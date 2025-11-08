@@ -106,7 +106,6 @@ This report presents a comprehensive exploratory data analysis of the Census Inc
 
 - **Positive class (>$50K):** 6.21% of samples
 - **Negative class (≤$50K):** 93.79% of samples
-- **Imbalance ratio:** 0.066
 
 ![Target Distribution](../figures/target_distribution.png)
 
@@ -125,7 +124,7 @@ This report presents a comprehensive exploratory data analysis of the Census Inc
 
 **Business Impact:**
 - High precision important to avoid false positives (incorrectly predicting high income)
-- Consider cost-sensitive learning if misclassification costs differ
+- One can consider cost-sensitive learning if misclassification costs differ
 
 **Model Selection:**
 - Models that handle imbalanced data well:
@@ -217,7 +216,6 @@ This report presents a comprehensive exploratory data analysis of the Census Inc
 
 **Key Findings:**
 - **Low multicollinearity:** Most numerical features show low correlation with each other
-- Reduces risk of multicollinearity issues in linear models
 - Tree-based models can capture non-linear relationships that correlation doesn't reveal
 
 **Strong Correlations with Target:**
@@ -254,7 +252,7 @@ This report presents a comprehensive exploratory data analysis of the Census Inc
 
 ---
 
-## 7. Recommendations for Preprocessing
+## 7. EDA inspired recommendations for Preprocessing
 
 ### 7.1 Missing Value Treatment
 1. **Migration features:** Create "migration_available" flag or impute with "Not in universe"
@@ -284,7 +282,7 @@ This report presents a comprehensive exploratory data analysis of the Census Inc
 
 ---
 
-## 8. Recommendations for Modeling
+## 8. EDA inspired recommendations for Modeling
 
 ### 8.1 Model Selection
 - **LightGBM:** Recommended for handling imbalanced data with native categorical support
@@ -297,10 +295,8 @@ This report presents a comprehensive exploratory data analysis of the Census Inc
 - Apply class weights (`scale_pos_weight` for LightGBM, `class_weight='balanced'` for Random Forest)
 
 ### 8.3 Evaluation Strategy
-- Use stratified cross-validation
 - Focus on ROC-AUC as primary metric
 - Monitor Precision-Recall curve
-- Consider cost-sensitive evaluation if business costs are known
 
 ### 8.4 Addressing Class Imbalance
 1. **Class weights:** Adjust class weights in model training
