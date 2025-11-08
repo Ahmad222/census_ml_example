@@ -43,7 +43,7 @@ This report documents the data preprocessing pipeline applied to the Census Inco
 - Keep one instance per unique combination
 - **Result:** Reduced dataset size, preventing model overfitting to repeated samples
 
-**Reference:** See EDA report section on duplicate analysis: ![Duplicate Analysis](../figures/duplicate_analysis.png)
+**Reference:** See EDA report section on duplicate analysis
 
 ---
 
@@ -214,17 +214,7 @@ This report documents the data preprocessing pipeline applied to the Census Inco
 6. **Encoding Strategy:** Hybrid approach balancing dimensionality and information preservation
 7. **Data Versions:** Saving both raw and processed versions for different model requirements
 
----
 
-## Next Steps
-
-✅ **Preprocessing Complete**  
-→ Proceed to **Modeling** (`notebooks/03_modeling.ipynb`)
-
-The preprocessed data is now ready for:
-- LightGBM training (using raw version with native categorical support)
-- Random Forest training (using processed version with encoded features)
-- Hyperparameter tuning and model evaluation
 
 ---
 
